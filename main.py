@@ -1,22 +1,35 @@
-from robo_lib.robot_controller import RobotController
-from robo_lib.pid_controller import PIDController
+from robot_controller import RobotController
+from microbit import sleep
 
-def main():
-    robot = RobotController()
-    
-    robot.pid_controller.tune(kp=0.004, ki=0.015)
-    
-    print("Moving forward 2 meters...")
-    robot.move_forward_by_meters(2.0)
-    
-    distance = robot.distance_to_obj_ahead()
-    print("Distance to object: " + str(distance) + " cm")
-    
-    robot.move_robot(1, 1, 100, 100)
-    sleep(1000)
-    robot.stop_robot()  # Stop the robot
-    
-    robot.reset_wheel_encoders()
+# Create robot
+robot = RobotController()
 
-if __name__ == "__main__":
-    main()
+print("Starting circle dance!")
+
+try:
+    while True:
+        # Forward circle - stronger turning
+        print("Forward circle...")
+        for i in range(8):
+            print("Forward segment " + str(i+1) + "/8")
+            robot.move(0, 5100)  # Forward with strong right turn
+            sleep(300)  # 1.5 seconds per segment
+        
+        robot.stop_robot()
+        sleep(1000)
+        
+        # Backward circle - actually go backwards!
+        print("Backward circle...")
+        for i in range(8):
+            print("Backward segment " + str(i+1) + "/8")
+            robot.move(0, -5100)  # BACKWARD with strong left turn
+            sleep(300)  # 1.5 seconds per segment
+        
+        robot.stop_robot()
+        sleep(1000)
+        
+        print("Completed one cycle!")
+
+except KeyboardInterrupt:
+    print("Stopping...")
+    robot.stop_robot()
