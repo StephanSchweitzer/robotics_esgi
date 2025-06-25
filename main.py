@@ -1,7 +1,7 @@
 # main.py - Example usage of the RobotController class with PID
 
-from robot_controller import RobotController
-from pid_controller import PIDController
+from robo_lib.robot_controller import RobotController
+from robo_lib.pid_controller import PIDController
 
 def main():
     # Option 1: Use default PID controller
