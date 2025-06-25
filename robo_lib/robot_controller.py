@@ -1,7 +1,6 @@
 from microbit import *
 import microbit
 import math
-from robo_lib.pid_controller import pid_control
 import time
 import machine
 
@@ -14,7 +13,7 @@ class RobotController:
         self.circ_of_motor = self.circ_of_wheel / 80
         
         if pid_controller is None:
-            from pid_controller import PIDController  # Import here to avoid circular imports
+            from pid_controller import PIDController
             self.pid_controller = PIDController()
         else:
             self.pid_controller = pid_controller
@@ -100,7 +99,7 @@ class RobotController:
             error = target_ticks - average_ticks
             print("error : " + str(error))
 
-            pid_output = pid_control(error)
+            pid_output = self.pid_controller.compute(error)
             speed = min(max(int(pid_output), 5), 255)
             print("speed : " + str(speed))
 
