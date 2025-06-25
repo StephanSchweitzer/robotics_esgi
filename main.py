@@ -1,5 +1,3 @@
-# main.py - Example usage of the RobotController class with PID
-
 from robo_lib.robot_controller import RobotController
 from robo_lib.pid_controller import PIDController
 
@@ -18,7 +16,7 @@ def main():
     sleep(1000)
     robot.stop_robot()  # Stop the robot
     
-    robot.reset_encoders()
+    robot.reset_wheel_encoders()
 
 if __name__ == "__main__":
     main()
