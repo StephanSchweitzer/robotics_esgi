@@ -8,6 +8,7 @@ print("Starting circle dance!")
 
 try:
     while True:
+        #robot.move(80, 0)
         robot.turn_by_angle_pid(90)
         sleep(3000)
         

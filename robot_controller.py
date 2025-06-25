@@ -10,6 +10,7 @@ class RobotController:
         self.robot_addr = robot_addr
         self.r_of_wheel = r_of_wheel
         self.max_speed = max_speed
+        self.min_speed = 50
         self.circ_of_wheel = math.pi * 2 * self.r_of_wheel
         self.circ_of_motor = self.circ_of_wheel / 80
         self.L = L
@@ -84,7 +85,8 @@ class RobotController:
         self.move_robot(left_dir, right_dir, left_speed, right_speed)
 
 
-    def move_distance_with_move_function(self, distance_meters, max_speed=150, min_speed=20):
+
+    def move_distance_with_move_function(self, distance_meters, max_speed=255, min_speed=80):
         self.reset_wheel_encoders()
         
         wheel_turns = distance_meters / self.circ_of_wheel
@@ -103,27 +105,24 @@ class RobotController:
             
             print("Current: " + str(avg_ticks) + " ticks, Remaining: " + str(error_distance) + "m")
             
-            # Stop condition
             if abs(error_ticks) < 5:
-                self.move(0, 0)  # Stop using move function
+                self.move(0, 0)
                 print("Target reached!")
                 break
             
-            # Linear speed scaling
             speed_scale = abs(error_distance) / distance_meters
             speed_scale = max(float(min_speed)/float(max_speed), min(1.0, speed_scale))
             
             target_speed = int(max_speed * speed_scale)
             target_speed = max(target_speed, min_speed)
             
-            # Ensure correct direction
             if error_distance < 0:
                 target_speed = -target_speed
             
             print("Target speed: " + str(target_speed))
             
-            # Use your existing move function (forward speed, 0 angular velocity for straight)
             self.move(target_speed, 0)
+
 
 
     def turn_by_angle_pid(self, angle_degrees):
@@ -136,46 +135,42 @@ class RobotController:
         
         self.reset_wheel_encoders()
         
-        base_turn_speed = 150
-        
-        if angle_degrees > 0:
-            target_left_vel = base_turn_speed
-            target_right_vel = -base_turn_speed
-        else:
-            target_left_vel = -base_turn_speed
-            target_right_vel = base_turn_speed
-        
         while True:
             left_ticks, right_ticks = self.read_wheel_encoders()
-            current_movement = (abs(left_ticks) + abs(right_ticks)) / 2
             
-            error = target_ticks - current_movement
+            # Calculate individual wheel errors
+            if angle_degrees > 0:
+                left_error = target_ticks - left_ticks
+                right_error = -target_ticks - right_ticks
+            else:
+                left_error = -target_ticks - left_ticks  
+                right_error = target_ticks - right_ticks
             
-            if abs(error) < 1:
+            if abs(left_error) < 1 and abs(right_error) < 1:
                 break
             
-            velocity_scale = min(1.0, abs(error) / target_ticks * 2)
-            velocity_scale = max(0.2, velocity_scale)
+            target_left_vel = self.left_pid.compute(left_error)
+            target_right_vel = self.right_pid.compute(right_error)
             
-            scaled_left_vel = target_left_vel * velocity_scale
-            scaled_right_vel = target_right_vel * velocity_scale
-            
-            self.advance_with_pid(scaled_left_vel, scaled_right_vel)
+            self.advance_with_pid(target_left_vel, target_right_vel)
             
             sleep(20)
         
         self.stop_robot()
-        print("Turn complete! Moved " + str(current_movement) + " ticks")
+        print("Turn complete!")
 
 
 
     def velocity_to_motor_command(self, velocity):
         if velocity >= 0:
             direction = 1
-            speed = min(int(abs(velocity)), 255)
+            speed = min(int(abs(velocity)), self.max_speed)
         else:
             direction = 2
-            speed = min(int(abs(velocity)), 255)        
+            speed = min(int(abs(velocity)), self.max_speed)      
+
+        if speed > 0 and speed < self.min_speed:
+            speed = self.min_speed  
         
         return speed, direction
 
@@ -248,30 +243,6 @@ class RobotController:
     def reset_wheel_encoders(self):
         self.cumulative_left = 0
         self.cumulative_right = 0
-
-
-
-    def move_forward_by_meters(self, meters=1.0):
-        wheel_turns = meters / self.circ_of_wheel
-        TICKS_PER_METER = wheel_turns * 80
-        target_ticks = int(TICKS_PER_METER)
-
-        while True:
-            sleep(10)
-            left_ticks, right_ticks = self.read_wheel_encoders()
-            average_ticks = (left_ticks + right_ticks) / 2
-
-            error = target_ticks - average_ticks
-            print("error : " + str(error))
-
-            # Use left_pid for the forward movement control
-            pid_output = self.left_pid.compute(error)
-            speed = min(max(int(pid_output), 5), 255)
-            print("speed : " + str(speed))
-
-            self.move_robot(1, 1, speed, speed)
-            if error < 5:
-                break
 
 
 
