@@ -6,25 +6,28 @@ import machine
 
 
 class RobotController:
-    def __init__(self, robot_addr=0x10, r_of_wheel=0.0215, pid_controller=None):
+    def __init__(self, robot_addr=0x10, r_of_wheel=0.0215, max_speed=255, L=.1, pid_controller=None):
         self.robot_addr = robot_addr
         self.r_of_wheel = r_of_wheel
+        self.max_speed = max_speed
         self.circ_of_wheel = math.pi * 2 * self.r_of_wheel
         self.circ_of_motor = self.circ_of_wheel / 80
+        self.L = L
         
         if pid_controller is None:
             from pid_controller import PIDController
-            self.pid_controller = PIDController()
+            self.left_pid = PIDController()
+            self.right_pid = PIDController()
         else:
-            self.pid_controller = pid_controller
+            from pid_controller import PIDController
+            self.left_pid = PIDController(pid_controller.kp, pid_controller.ki, pid_controller.kd)
+            self.right_pid = PIDController(pid_controller.kp, pid_controller.ki, pid_controller.kd)
         
-        # Encoder tracking variables
         self.prev_left = 0
         self.prev_right = 0
         self.cumulative_left = 0
         self.cumulative_right = 0
         
-        # Initialize I2C
         i2c.init()
 
 
@@ -35,6 +38,73 @@ class RobotController:
         i2c.write(self.robot_addr, bytearray([1, left_speed]))  # Left speed
         i2c.write(self.robot_addr, bytearray([3, right_speed])) # Right speed
 
+
+    def move(self, velocity: float, angular_velocity: float) -> None:
+        desired_left_vel = velocity - (self.L/2) * angular_velocity
+        desired_right_vel = velocity + (self.L/2) * angular_velocity
+        
+        desired_left_vel = max(-self.max_speed, min(self.max_speed, desired_left_vel))
+        desired_right_vel = max(-self.max_speed, min(self.max_speed, desired_right_vel))
+        
+        self.advance_with_pid(desired_left_vel, desired_right_vel)
+
+
+
+    def advance_with_pid(self, desired_left_vel: float, desired_right_vel: float) -> None:
+        current_left_vel, current_right_vel = self.get_wheel_velocities()
+        
+        current_time = time.ticks_ms()
+        dt = time.ticks_diff(current_time, self.last_time) / 1000.0  # Convert to seconds
+        self.last_time = current_time
+        
+        if dt > 0:
+            left_output = self.left_pid.compute(desired_left_vel - current_left_vel)
+            right_output = self.right_pid.compute(desired_right_vel - current_right_vel)
+            
+            left_speed, left_dir = self.velocity_to_motor_command(left_output)
+            right_speed, right_dir = self.velocity_to_motor_command(right_output)
+            
+            self.move_robot(left_dir, right_dir, left_speed, right_speed)
+
+
+
+    def advance(self, desired_left_vel: float, desired_right_vel: float) -> None:
+        left_speed, left_dir = self.velocity_to_motor_command(desired_left_vel)
+        right_speed, right_dir = self.velocity_to_motor_command(desired_right_vel)
+        
+        self.move_robot(left_dir, right_dir, left_speed, right_speed)
+
+
+
+    def velocity_to_motor_command(self, velocity):
+        if velocity >= 0:
+            direction = 1
+            speed = min(int(abs(velocity) * 255 / self.max_speed), 255)
+        else:
+            direction = 2
+            speed = min(int(abs(velocity) * 255 / self.max_speed), 255)
+        
+        return speed, direction
+
+    def get_wheel_velocities(self):
+        current_left_ticks, current_right_ticks = self.read_wheel_encoders()
+        
+        current_time = time.ticks_ms()
+        dt = time.ticks_diff(current_time, self.last_time) / 1000.0
+        
+        if dt > 0:
+            left_tick_velocity = (current_left_ticks - self.last_left_ticks) / dt
+            right_tick_velocity = (current_right_ticks - self.last_right_ticks) / dt
+            
+            left_velocity = (left_tick_velocity / 80) * self.circ_of_wheel
+            right_velocity = (right_tick_velocity / 80) * self.circ_of_wheel
+            
+            self.last_left_ticks = current_left_ticks
+            self.last_right_ticks = current_right_ticks
+            
+            return left_velocity, right_velocity
+        else:
+            return 0.0, 0.0
 
 
     def stop_robot(self):
@@ -116,4 +186,5 @@ class RobotController:
         microbit.pin2.read_digital()
         t = machine.time_pulse_us(microbit.pin2, 1)
         dist = 340 * t / 20000
+
         return dist
