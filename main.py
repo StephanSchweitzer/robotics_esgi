@@ -10,7 +10,7 @@ def main():
     robot.move_forward_by_meters(2.0)
     
     distance = robot.distance_to_obj_ahead()
-    print(f"Distance to object: {distance} cm")
+    print("Distance to object: " + str(distance) + " cm")
     
     robot.move_robot(1, 1, 100, 100)
     sleep(1000)

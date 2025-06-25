@@ -104,6 +104,8 @@ class RobotController:
             print("speed : " + str(speed))
 
             self.move_robot(1, 1, speed, speed)
+            if error < 5:
+                break
 
 
 
