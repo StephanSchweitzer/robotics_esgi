@@ -7,6 +7,8 @@ class PIDController:
         
         self.integral_error = 0
         self.previous_error = 0
+
+
     
     def compute(self, error):
         proportional = self.kp * error
@@ -25,9 +27,13 @@ class PIDController:
         
         return output
     
+
+    
     def reset(self):
         self.integral_error = 0
         self.previous_error = 0
+    
+
     
     def tune(self, kp=None, ki=None, kd=None):
         if kp is not None:
@@ -36,23 +42,3 @@ class PIDController:
             self.ki = ki
         if kd is not None:
             self.kd = kd
-
-
-
-
-
-
-# # Paramètres PID
-# kp, ki, kd = 0.3, 0.01, 0.1
-# integral_error = 0
-# previous_error = 0
-
-
-# # Fonction PID complète
-# def pid_control(error):
-#     global integral_error, previous_error
-#     integral_error += error
-#     derivative_error = error - previous_error
-#     output = kp * error
-#     previous_error = error
-#     return output
