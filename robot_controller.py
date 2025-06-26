@@ -138,7 +138,6 @@ class RobotController:
         while True:
             left_ticks, right_ticks = self.read_wheel_encoders()
             
-            # Calculate individual wheel errors
             if angle_degrees > 0:
                 left_error = target_ticks - left_ticks
                 right_error = -target_ticks - right_ticks
@@ -146,7 +145,9 @@ class RobotController:
                 left_error = -target_ticks - left_ticks  
                 right_error = target_ticks - right_ticks
             
-            if abs(left_error) < 1 and abs(right_error) < 1:
+
+            print("the left error is " + str(left_error) + " and the right error is " + str(right_error))
+            if abs(left_error) < 5 and abs(right_error) < 5:
                 break
             
             target_left_vel = self.left_pid.compute(left_error)
